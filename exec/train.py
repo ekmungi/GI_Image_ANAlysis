@@ -1,17 +1,13 @@
 import sys, os
 # sys.path.append('/home/avemuri/DEV/projects/endovis2018-challenge/')
-sys.path.append('/media/anant/dev/src/endovis/')
+sys.path.append('/media/anant/dev/src/GIANA/')
 
 
-from giana.dataloader.giana_dataloader import giana_data_pipeline
-from giana.helpers.utils import SoftDiceLoss, make_one_hot, dice_score
-from giana.model.unet import UNet, ResUNet
+from dataloader.giana_dataloader import giana_data_pipeline
+from helpers.utils import SoftDiceLoss, make_one_hot, dice_score
+from model.unet import UNet, ResUNet
 
 import numpy as np
-
-# from multiprocessing import Pool
-# from concurrent.futures import ThreadPoolExecutor
-# from imgaug import BackgroundAugmenter, BatchLoader, Batch
 
 import torch
 import torch.nn as nn
@@ -30,15 +26,8 @@ MAX_VALIDATION_ITERATIONS = 55
 
 def train(datafile):
 
-    # resnet = models.resnet50(pretrained=True)
-    # encoder = nn.Sequential(*list(resnet.children())[0:7])
-    # for params in encoder.parameters():
-    #     params.requires_grad = False
-
     # model = ResUNet(n_classes=2)
     model = UNet(n_channels=3, n_classes=2)
-
-    # params_to_train = list(model.middle_conv.parameters()) + list(model.)
 
     if torch.cuda.is_available():
         model.cuda()
@@ -48,22 +37,9 @@ def train(datafile):
     
     optimizer = torch.optim.SGD(model.parameters(), lr=LEARNING_RATE, momentum = 0.9)
 
-    viz = PytorchVisdomLogger(name="GIANA", port=8080)
-
-
-    # mylog = pvl(name='GIANA')
-    #torch.multiprocessing.freeze_support()
+    vis = PytorchVisdomLogger(name="GIANA", port=8080)
 
     giana_transform, giana_train_loader, giana_valid_loader = giana_data_pipeline(datafile)
-    # giana_pool = Pool(2)
-    # giana_iter = iter(giana_train_loader)
-
-    # t0 = timeit.default_timer()
-
-    ## Multiprocess
-    
-    
-    # t0 = timeit.default_timer()
     
     for epoch in range(EPOCHS):
         iteration = 0
@@ -97,17 +73,17 @@ def train(datafile):
 
                 image_args = {'normalize':True, 'range':(0, 1)}
                 # viz.show_image_grid(images=images.cpu()[:, 0, ].unsqueeze(1), name='Images_train', image_args=image_args)
-                viz.show_image_grid(images=predictions_softmax.cpu()[:, 0, ].unsqueeze(1), name='Predictions_1', image_args=image_args)
-                viz.show_image_grid(images=predictions_softmax.cpu()[:, 1, ].unsqueeze(1), name='Predictions_2', image_args=image_args)
-                viz.show_image_grid(images=labels.cpu(), name='Ground truth')
-                viz.show_value(value=loss.item(), name='Train_Loss', label='Loss', counter=epoch + (iteration/MAX_ITERATIONS))
+                vis.show_image_grid(images=predictions_softmax.cpu()[:, 0, ].unsqueeze(1), name='Predictions_1', image_args=image_args)
+                vis.show_image_grid(images=predictions_softmax.cpu()[:, 1, ].unsqueeze(1), name='Predictions_2', image_args=image_args)
+                vis.show_image_grid(images=labels.cpu(), name='Ground truth')
+                vis.show_value(value=loss.item(), name='Train_Loss', label='Loss', counter=epoch + (iteration/MAX_ITERATIONS))
                 
 
             if iteration == MAX_ITERATIONS:
                 break
 
-        score = model.predict(giana_valid_loader, SCORE_TYPE, MAX_VALIDATION_ITERATIONS, viz)
-        viz.show_value(value=np.asarray([score]), name='TestDiceScore', label='Dice', counter=epoch)
+        score = model.predict(giana_valid_loader, SCORE_TYPE, MAX_VALIDATION_ITERATIONS, vis)
+        vis.show_value(value=np.asarray([score]), name='TestDiceScore', label='Dice', counter=epoch)
         print('\n--------------------------------------------------\nEpoch: {0}, Score: {1}, Loss: {2}\n--------------------------------------------------\n'.format(epoch, score, loss))
 
         # # Clear memory #
